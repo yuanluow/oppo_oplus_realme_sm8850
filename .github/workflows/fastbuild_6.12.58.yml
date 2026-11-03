@@ -90,6 +90,11 @@ on:
         required: true
         type: boolean
         default: 'false'
+      nomount_enable:
+        description: '是否内置NoMount(maxsteeel/nomount v2.2.0, 无挂载的VFS路径重定向; 刷入后需安装同版本NoMount模块)'
+        required: true
+        type: boolean
+        default: 'false'
       kernel_suffix:
         description: '内核后缀(留空默认,开头别加连字符,勿加空格等影响指令运行的保留字符)'
         required: false
@@ -398,6 +403,15 @@ jobs:
           patch -p1 --forward < unicode_bypass_fix.patch
           if grep -q "ignore_init" fs/unicode/mkutf8data.c; then echo "Unicode 补丁未生效"; exit 1; fi
           echo "Unicode 补丁已应用"
+
+      - name: 内置 NoMount
+        if: inputs.nomount_enable
+        run: |
+          cd kernel_workspace/common
+          curl -LSs "https://raw.githubusercontent.com/maxsteeel/nomount/v2.2.0/kernel/setup.sh" | bash -s v2.2.0
+          echo "CONFIG_NOMOUNT=y" >> ./arch/arm64/configs/gki_defconfig
+          if [ ! -f fs/nomount/nomount.c ] || ! grep -q 'fs/nomount/Kconfig' fs/Kconfig || ! grep -q 'nomount/' fs/Makefile; then echo "NoMount 集成失败"; exit 1; fi
+          echo "NoMount v2.2.0 已集成"
 
       - name: 启用网络功能增强优化配置
         if: inputs.better_net
@@ -777,6 +791,7 @@ jobs:
           echo "KSU Ver: ${KSUVER}" >> ./ak3.log
           echo "susfs: ${{ github.event.inputs.susfs_enable }}" >> ./ak3.log
           echo "KPM: ${{ github.event.inputs.kpm_enable }}" >> ./ak3.log
+          echo "NoMount: ${{ github.event.inputs.nomount_enable }}" >> ./ak3.log
           echo "LZ4: ${{ github.event.inputs.lz4_enable }}" >> ./ak3.log
           echo "LZ4KD: ${{ github.event.inputs.lz4kd_enable }}" >> ./ak3.log
           echo "IPset: ${{ github.event.inputs.better_net }}" >> ./ak3.log
@@ -861,6 +876,7 @@ jobs:
           - KSU分支：${{ env.KSU_TYPENAME }}
           - susfs支持：${{ github.event.inputs.susfs_enable }}
           - KPM支持 ：${{ github.event.inputs.kpm_enable }}
+          - NoMount内置 ：${{ github.event.inputs.nomount_enable }}
           - LZ4支持：${{ github.event.inputs.lz4_enable }}
           - LZ4KD支持：${{ github.event.inputs.lz4kd_enable }}
           - 网络功能增强：${{ github.event.inputs.better_net }}
