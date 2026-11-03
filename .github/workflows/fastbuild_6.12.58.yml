@@ -318,7 +318,11 @@ jobs:
             cp ./susfs4ksu/kernel_patches/fs/* ./common/fs/
             cp ./susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
             cd ./common
-            patch -p1 -F 3 < 50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch || true
+            if ! patch -p1 -F 3 < 50_add_susfs_in_gki-${{ env.ANDROID_VERSION }}-${{ env.KERNEL_VERSION }}.patch; then
+              echo "SUSFS 补丁有未能应用的部分，停止构建："
+              find . -name '*.rej'
+              exit 1
+            fi
             cd ..
           else
             echo "已选择无内置KernelSU模式，跳过susfs配置..."
