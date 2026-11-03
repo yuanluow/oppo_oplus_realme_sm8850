@@ -426,9 +426,18 @@ jobs:
         if: inputs.skip_secureguard
         run: |
           cd kernel_workspace/common
-          wget -O skip_oplus_secureguard.patch https://raw.githubusercontent.com/cctv18/kernel-workshop/main/patch/custombl/skip_oplus_secureguard.patch
-          patch -p1 -F 3 < skip_oplus_secureguard.patch
-          grep -q 'oplus_secure_guard_new' kernel/module/main.c || { echo "SecureGuard 屏蔽补丁未生效"; exit 1; }
+          F=kernel/module/main.c
+          if grep -q 'oplus_secure_guard_new' "$F"; then echo "已包含屏蔽代码，跳过"; exit 0; fi
+          cat > /tmp/sg_block.txt <<'SGEOF'
+          	/* Skip oplus_secure_guard_new module load (keep ksud alive) */
+          	if (info->name && strcmp(info->name, "oplus_secure_guard_new") == 0) {
+          		err = 0;
+          		pr_warn("Blocking oplus_secure_guard_new module.\n");
+          	}
+
+          SGEOF
+          perl -0777 -i -pe 'BEGIN{local $/;open(F,"/tmp/sg_block.txt");$b=<F>;close F} s{(\t/\* Figure out module layout, and allocate all the memory\. \*/)}{$b$1}' "$F"
+          grep -q 'oplus_secure_guard_new' "$F" || { echo "SecureGuard 屏蔽插入失败"; exit 1; }
           echo "已屏蔽 oplus_secure_guard_new"
       - name: 内置 NoMount
         if: inputs.nomount_enable
