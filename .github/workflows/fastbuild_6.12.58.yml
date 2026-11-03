@@ -100,6 +100,11 @@ on:
         required: true
         type: boolean
         default: 'true'
+      susfs_log:
+        description: '是否开启SUSFS内核日志(仅调试用; 关闭可减少日志输出和SUSFS痕迹)'
+        required: true
+        type: boolean
+        default: 'false'
       kernel_suffix:
         description: '内核后缀(留空默认,开头别加连字符,勿加空格等影响指令运行的保留字符)'
         required: false
@@ -359,7 +364,11 @@ jobs:
           echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> ./common/arch/arm64/configs/gki_defconfig
+          if [[ "${{ github.event.inputs.susfs_log }}" == "true" ]]; then
+            echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> ./common/arch/arm64/configs/gki_defconfig
+          else
+            echo "CONFIG_KSU_SUSFS_ENABLE_LOG=n" >> ./common/arch/arm64/configs/gki_defconfig
+          fi
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -806,6 +815,7 @@ jobs:
           echo "KPM: ${{ github.event.inputs.kpm_enable }}" >> ./ak3.log
           echo "NoMount: ${{ github.event.inputs.nomount_enable }}" >> ./ak3.log
           echo "SecureGuard屏蔽: ${{ github.event.inputs.skip_secureguard }}" >> ./ak3.log
+          echo "SUSFS日志: ${{ github.event.inputs.susfs_log }}" >> ./ak3.log
           echo "LZ4: ${{ github.event.inputs.lz4_enable }}" >> ./ak3.log
           echo "LZ4KD: ${{ github.event.inputs.lz4kd_enable }}" >> ./ak3.log
           echo "IPset: ${{ github.event.inputs.better_net }}" >> ./ak3.log
