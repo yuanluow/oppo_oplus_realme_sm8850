@@ -432,6 +432,7 @@ jobs:
           	if (mod->name && strstr(mod->name, "secure_guard")) {
           		pr_warn("Neutralizing secureguard module %s: skipping init\n", mod->name);
           		mod->init = NULL;
+          		mod->exit = NULL;
           	}
 
           SGEOF
