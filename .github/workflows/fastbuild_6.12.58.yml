@@ -95,6 +95,11 @@ on:
         required: true
         type: boolean
         default: 'false'
+      skip_secureguard:
+        description: '是否屏蔽一加SecureGuard(oplus_secure_guard_new)模块加载(防止ksud/su被root_check杀死)'
+        required: true
+        type: boolean
+        default: 'true'
       kernel_suffix:
         description: '内核后缀(留空默认,开头别加连字符,勿加空格等影响指令运行的保留字符)'
         required: false
@@ -404,6 +409,14 @@ jobs:
           if grep -q "ignore_init" fs/unicode/mkutf8data.c; then echo "Unicode 补丁未生效"; exit 1; fi
           echo "Unicode 补丁已应用"
 
+      - name: 屏蔽一加 SecureGuard 模块
+        if: inputs.skip_secureguard
+        run: |
+          cd kernel_workspace/common
+          wget -O skip_oplus_secureguard.patch https://raw.githubusercontent.com/cctv18/kernel-workshop/main/patch/custombl/skip_oplus_secureguard.patch
+          patch -p1 -F 3 < skip_oplus_secureguard.patch
+          grep -q 'oplus_secure_guard_new' kernel/module/main.c || { echo "SecureGuard 屏蔽补丁未生效"; exit 1; }
+          echo "已屏蔽 oplus_secure_guard_new"
       - name: 内置 NoMount
         if: inputs.nomount_enable
         run: |
@@ -792,6 +805,7 @@ jobs:
           echo "susfs: ${{ github.event.inputs.susfs_enable }}" >> ./ak3.log
           echo "KPM: ${{ github.event.inputs.kpm_enable }}" >> ./ak3.log
           echo "NoMount: ${{ github.event.inputs.nomount_enable }}" >> ./ak3.log
+          echo "SecureGuard屏蔽: ${{ github.event.inputs.skip_secureguard }}" >> ./ak3.log
           echo "LZ4: ${{ github.event.inputs.lz4_enable }}" >> ./ak3.log
           echo "LZ4KD: ${{ github.event.inputs.lz4kd_enable }}" >> ./ak3.log
           echo "IPset: ${{ github.event.inputs.better_net }}" >> ./ak3.log
