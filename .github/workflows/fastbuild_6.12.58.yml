@@ -422,23 +422,22 @@ jobs:
           if grep -q "ignore_init" fs/unicode/mkutf8data.c; then echo "Unicode 补丁未生效"; exit 1; fi
           echo "Unicode 补丁已应用"
 
-      - name: 屏蔽一加 SecureGuard 模块
+      - name: 彻底禁用一加 SecureGuard (do_init_module 跳过 init)
         if: inputs.skip_secureguard
         run: |
           cd kernel_workspace/common
           F=kernel/module/main.c
-          if grep -q 'oplus_secure_guard_new' "$F"; then echo "已包含屏蔽代码，跳过"; exit 0; fi
-          cat > /tmp/sg_block.txt <<'SGEOF'
-          	/* Skip oplus_secure_guard_new module load (keep ksud alive) */
-          	if (info->name && strcmp(info->name, "oplus_secure_guard_new") == 0) {
-          		err = 0;
-          		pr_warn("Blocking oplus_secure_guard_new module.\n");
+          if grep -q 'Neutralizing secureguard' "$F"; then echo "已包含屏蔽代码，跳过"; exit 0; fi
+          cat > /tmp/sg_init.txt <<'SGEOF'
+          	if (mod->name && strstr(mod->name, "secure_guard")) {
+          		pr_warn("Neutralizing secureguard module %s: skipping init\n", mod->name);
+          		mod->init = NULL;
           	}
 
           SGEOF
-          perl -0777 -i -pe 'BEGIN{local $/;open(F,"/tmp/sg_block.txt");$b=<F>;close F} s{(\t/\* Figure out module layout, and allocate all the memory\. \*/)}{$b$1}' "$F"
-          grep -q 'oplus_secure_guard_new' "$F" || { echo "SecureGuard 屏蔽插入失败"; exit 1; }
-          echo "已屏蔽 oplus_secure_guard_new"
+          perl -0777 -i -pe 'BEGIN{local $/;open(F,"/tmp/sg_init.txt");$b=<F>;close F} s{(\t/\* Start the module \*/)}{$b$1}' "$F"
+          grep -q 'Neutralizing secureguard' "$F" || { echo "SecureGuard 跳过补丁插入失败"; exit 1; }
+          echo "已在 do_init_module 跳过 secureguard init"
       - name: 内置 NoMount
         if: inputs.nomount_enable
         run: |
